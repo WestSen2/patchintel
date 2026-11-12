@@ -3,6 +3,7 @@
 Every external call in PatchIntel goes through request_with_backoff so the
 rate-limit/caching rules from docs/m1-design-review.md section 6 live in
 exactly one place:
+- redirects are FOLLOWED (Steam news URLs 302 to steamcommunity.com etc.)
 - 429 / 503 / 504 -> retry honoring Retry-After (capped), exponential backoff
 - transport errors -> retry with backoff
 - everything else -> raise_for_status
@@ -37,7 +38,7 @@ def request_with_backoff(
 
     for attempt in range(1, max_attempts + 1):
         try:
-            with httpx.Client(timeout=timeout) as client:
+            with httpx.Client(timeout=timeout, follow_redirects=True) as client:
                 resp = client.request(
                     method, url, params=params, headers=merged_headers
                 )

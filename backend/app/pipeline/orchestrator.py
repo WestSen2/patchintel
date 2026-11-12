@@ -74,7 +74,12 @@ def enrich_patches(db: Session, stats: PipelineStats) -> None:
     pending = db.query(models.Patch).filter_by(status="detected").all()
     for patch in pending:
         try:
-            patch.raw_text = forum_scraper.fetch_patch_notes(patch.source_url)
+            # Official announcements usually carry full BBCode notes in the
+            # news payload itself — prefer that over scraping (faster + kinder).
+            if len(patch.raw_text) >= forum_scraper.MIN_NOTES_LENGTH:
+                patch.raw_text = steam_news.strip_bbcode(patch.raw_text)
+            else:
+                patch.raw_text = forum_scraper.fetch_patch_notes(patch.source_url)
             patch.status = "fetched"
             stats.enriched += 1
         except Exception as exc:  # ScrapeError or UpstreamError
