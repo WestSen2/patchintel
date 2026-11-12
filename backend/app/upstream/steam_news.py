@@ -7,6 +7,10 @@ first; only fall back to scraping when contents are too short.
 Only items from the official feed (feedname == "steam_community_announcements")
 count as patch candidates: the same API also returns third-party coverage
 (PCGamesN, PC Gamer, ...), which is news ABOUT patches, not patch notes.
+
+Pagination: GetNewsForApp supports `enddate` (unix seconds) — items strictly
+before that timestamp. backfill_patches() pages backwards to ingest the
+full patch history.
 """
 
 from __future__ import annotations
@@ -45,21 +49,26 @@ def strip_bbcode(text: str) -> str:
     return "\n".join(ln for ln in lines if ln)
 
 
-def fetch_recent_news(settings: Settings, count: int = 20) -> list[NewsItem]:
-    """Fetch recent Deadlock news items. Requires settings.steam_api_key."""
+def fetch_recent_news(
+    settings: Settings, count: int = 20, enddate: int | None = None
+) -> list[NewsItem]:
+    """Fetch Deadlock news items (newest first). Requires settings.steam_api_key.
+
+    enddate: unix seconds — only return items published before this moment.
+    """
     if not settings.steam_api_key:
         raise RuntimeError("STEAM_API_KEY is not set — put it in backend/.env")
 
-    resp = request_with_backoff(
-        "GET",
-        STEAM_NEWS_URL,
-        params={
-            "appid": DEADLOCK_APP_ID,
-            "key": settings.steam_api_key,
-            "count": count,
-            "format": "json",
-        },
-    )
+    params = {
+        "appid": DEADLOCK_APP_ID,
+        "key": settings.steam_api_key,
+        "count": count,
+        "format": "json",
+    }
+    if enddate is not None:
+        params["enddate"] = enddate
+
+    resp = request_with_backoff("GET", STEAM_NEWS_URL, params=params)
     items = resp.json().get("appnews", {}).get("newsitems", [])
     return [
         NewsItem(
