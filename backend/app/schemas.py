@@ -3,7 +3,7 @@
 Two families:
 - LLM extraction contract (PatchSummary / ExtractedChange) — the strict JSON
   the summarizer must produce. Validated in code; see pipeline/summarizer.py.
-- API response models (PatchOut / ChangeOut) — what /api/patches returns.
+- API response models — what the /api/* endpoints return.
 """
 
 from datetime import datetime
@@ -84,3 +84,78 @@ class PatchDetailOut(BaseModel):
     changes: list[ChangeOut]
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------- M2: stats
+
+class SnapshotOut(BaseModel):
+    patch_id: int | None
+    window: str
+    window_start: datetime
+    window_end: datetime
+    truncated: bool
+    win_rate: float
+    pick_rate: float | None
+    matches: int
+
+    model_config = {"from_attributes": True}
+
+
+class VerdictOut(BaseModel):
+    id: int
+    patch_id: int
+    change_id: int | None
+    entity_type: str
+    entity_id: int
+    expected_direction: str
+    pre_win_rate: float | None
+    post_win_rate: float | None
+    delta_win_rate: float | None
+    pre_pick_rate: float | None
+    post_pick_rate: float | None
+    pre_matches: int
+    post_matches: int
+    ci_half_width: float | None
+    verdict: str
+    reason: str
+
+    model_config = {"from_attributes": True}
+
+
+class PatchImpactOut(BaseModel):
+    patch_id: int
+    title: str
+    patch_date: datetime | None
+    verdicts: list[VerdictOut]
+
+
+class HeroOut(BaseModel):
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
+class HeroDetailOut(BaseModel):
+    id: int
+    name: str
+    snapshots: list[SnapshotOut]
+    changes: list[ChangeOut]
+
+
+class ItemOut(BaseModel):
+    id: int
+    name: str
+    tier: int | None
+    cost: int | None
+
+    model_config = {"from_attributes": True}
+
+
+class ItemDetailOut(BaseModel):
+    id: int
+    name: str
+    tier: int | None
+    cost: int | None
+    snapshots: list[SnapshotOut]
+    changes: list[ChangeOut]
