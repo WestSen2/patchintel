@@ -1,0 +1,11 @@
+{
+  "title": "Deadlock patch notes for August 29, 2024",
+  "raw_text": "Heroes\nWarden: Base movement speed reduced from 6.5 to 6\nWarden: Fire Rate scaling with spirit reduced from 0.375 Fire Rate per Spirit to 0.3 Fire Rate per Spirit\nYamato: Power Slash max damage time requirement reduced from 1.5s to 1.4s\nYamato: Power Slash collision radius reduced by 8%\nYamato: Crimson Slash radius increased from 12m to 13m\nYamato: Fixed being able to die during Shadow Transformation if hit by Grey Talon's Owl",
+  "expected_source_lines": [
+    "Warden: Base movement speed reduced from 6.5 to 6",
+    "Warden: Fire Rate scaling with spirit reduced",
+    "Yamato: Power Slash max damage time requirement reduced",
+    "Yamato: Power Slash collision radius reduced by 8%",
+    "Yamato: Crimson Slash radius increased from 12m to 13m"
+  ]
+}
