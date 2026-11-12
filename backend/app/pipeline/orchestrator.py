@@ -1,10 +1,10 @@
 """Pipeline orchestrator: detect -> enrich -> extract -> resolve.
 
 Idempotent by design (design review §3):
-- detect skips steam_gids already in the DB (unique constraint)
+- detect/backfill skip steam_gids already in the DB (unique constraint)
 - enrich only touches status='detected'
 - extract only touches status='fetched'
-Re-running the whole pipeline is therefore always a safe no-op.
+Re-running the whole pipeline (or the backfill) is always a safe no-op.
 
 Quality gates:
 - scrape failure -> status='needs_review' (never store garbage)
@@ -25,6 +25,8 @@ from .entity_resolver import EntityResolver
 from .summarizer import PatchSummarizer
 
 MAX_DROPPED_RATIO = 0.2
+BACKFILL_PAGE_SIZE = 50
+BACKFILL_MAX_PAGES = 25  # 25 x 50 = 1250 announcements >> Deadlock's total
 
 
 @dataclass
@@ -51,9 +53,9 @@ def seed_entities(db: Session, settings: Settings) -> tuple[int, int]:
     return len(heroes), len(items)
 
 
-def detect_new_patches(db: Session, settings: Settings, stats: PipelineStats) -> None:
+def _insert_candidates(db: Session, items, stats: PipelineStats) -> None:
     known = {g for (g,) in db.query(models.Patch.steam_gid).all()}
-    for item in steam_news.fetch_recent_news(settings):
+    for item in items:
         if not steam_news.is_patch_candidate(item) or item.gid in known:
             continue
         db.add(
@@ -68,6 +70,30 @@ def detect_new_patches(db: Session, settings: Settings, stats: PipelineStats) ->
         )
         stats.detected_new += 1
     db.commit()
+
+
+def detect_new_patches(db: Session, settings: Settings, stats: PipelineStats) -> None:
+    _insert_candidates(db, steam_news.fetch_recent_news(settings), stats)
+
+
+def backfill_patches(db: Session, settings: Settings, stats: PipelineStats) -> None:
+    """Page backwards through Steam news history to ingest ALL past patches.
+
+    Steam returns items newest-first; `enddate` asks for items strictly
+    before a timestamp. We stop when a page comes back short (history
+    exhausted) or empty, with a hard page cap as a safety net.
+    """
+    enddate = None
+    for _ in range(BACKFILL_MAX_PAGES):
+        items = steam_news.fetch_recent_news(
+            settings, count=BACKFILL_PAGE_SIZE, enddate=enddate
+        )
+        if not items:
+            break
+        _insert_candidates(db, items, stats)
+        enddate = int(min(i.date for i in items).timestamp()) - 1
+        if len(items) < BACKFILL_PAGE_SIZE:
+            break
 
 
 def enrich_patches(db: Session, stats: PipelineStats) -> None:
@@ -145,9 +171,14 @@ def extract_changes(
 
 
 def run_pipeline(
-    db: Session, settings: Settings, summarizer: PatchSummarizer
+    db: Session,
+    settings: Settings,
+    summarizer: PatchSummarizer,
+    backfill: bool = False,
 ) -> PipelineStats:
     stats = PipelineStats()
+    if backfill:
+        backfill_patches(db, settings, stats)
     detect_new_patches(db, settings, stats)
     enrich_patches(db, stats)
     extract_changes(db, summarizer, stats)
