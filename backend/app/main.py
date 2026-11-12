@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
 from .api.auth import router as auth_router
+from .api.me import router as me_router
 from .api.patches import router as patches_router
 from .api.stats import router as stats_router
 from .config import get_settings
@@ -41,6 +42,7 @@ app.add_middleware(
 app.include_router(patches_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(me_router, prefix="/api")
 app.include_router(web_router)
 
 
