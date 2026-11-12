@@ -1,0 +1,37 @@
+# PatchIntel ingest pipeline — runs on GitHub Actions (free on public repos).
+# Every 6h at an off-peak minute + manual trigger. Needs two repo secrets:
+#   DATABASE_URL   (Neon Postgres connection string)
+#   STEAM_API_KEY
+# Optional: OPENAI_API_KEY, DEADLOCK_API_KEY
+name: pipeline
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEADLOCK_API_KEY: ${{ secrets.DEADLOCK_API_KEY }}
+        run: |
+          alembic upgrade head
+          python -m app.pipeline.run --seed-entities --snapshots --timing --verdicts

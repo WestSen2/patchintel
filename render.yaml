@@ -1,48 +1,35 @@
-# Render blueprint — PatchIntel backend + pipeline cron.
+# Render blueprint — PatchIntel backend (free tier).
 # Deploy: render.com -> New -> Blueprint -> point at this repo.
+#
+# Free-tier notes:
+# - No persistent disk on free web services -> DATABASE_URL must point at an
+#   external Postgres (Neon free tier recommended, see docs/deploy.md).
+# - Free web services sleep after 15 min idle; first request after sleep
+#   takes ~30s. Fine for a portfolio demo.
+# - The pipeline runs on GitHub Actions (free, public repo) — see
+#   .github/workflows/pipeline.yml — not on a paid Render cron.
 services:
   - type: web
     name: patchintel-api
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    disk:
-      name: patchintel-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
-        value: sqlite:////data/patchintel.db
+        sync: false     # Neon connection string, e.g.
+                        # postgresql+psycopg://user:pass@host/db?sslmode=require
       - key: DEMO_MODE
-        value: "true"   # flip to false after the first real ingest
+        value: "true"   # flip to "false" after the first real ingest
       - key: STEAM_API_KEY
         sync: false     # set in the Render dashboard
       - key: OPENAI_API_KEY
-        sync: false
+        sync: false     # optional; heuristic fallback works without it
       - key: APP_SECRET_KEY
         generateValue: true
       - key: APP_BASE_URL
         sync: false     # https://patchintel-api.onrender.com
       - key: CORS_ORIGINS
         sync: false     # https://your-vercel-app.vercel.app
-
-  - type: cron
-    name: patchintel-pipeline
-    runtime: python
-    rootDir: backend
-    schedule: "17 */6 * * *"   # every 6h, off-peak minute
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.pipeline.run --seed-entities --snapshots --timing --verdicts
-    envVars:
-      - key: DATABASE_URL
-        value: sqlite:////data/patchintel.db
-      - key: STEAM_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-    disk:
-      name: patchintel-data
-      mountPath: /data
-      sizeGB: 1
