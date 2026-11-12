@@ -27,6 +27,44 @@ PatchIntel is a Deadlock (Valve) analytics platform that automatically links eve
 | LLM | OpenAI structured-output patch extraction, Pydantic-validated; heuristic fallback when no key |
 | Data sources | Steam Web API, forums.playdeadlock.com, SteamDB GameTracking-Deadlock diffs, community Deadlock API |
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Upstream
+        steam[Steam News API]
+        forums[forums.playdeadlock.com]
+        dlapi[Community Deadlock API]
+        openid[Steam OpenID]
+    end
+
+    subgraph Backend["FastAPI backend (Python 3.12)"]
+        pipeline[Patch pipeline\ndetect → enrich → LLM extract]
+        stats[Stats ingest\nsnapshots · timing · verdicts]
+        personal[Personal layer\nsync · sessionize · tilt]
+        api[REST API]
+    end
+
+    subgraph Storage
+        db[(PostgreSQL / SQLite)]
+    end
+
+    subgraph Frontend
+        react[React SPA\npatches · heroes · items · dashboard]
+    end
+
+    steam --> pipeline
+    forums --> pipeline
+    dlapi --> stats
+    dlapi --> personal
+    openid --> personal
+    pipeline --> db
+    stats --> db
+    personal --> db
+    db --> api
+    api --> react
+```
+
 ## Monorepo layout
 
 ```
@@ -106,10 +144,20 @@ The React app is the primary UI: patches list, patch impact (verdict badges,
 stat blocks), hero pages with pre/post win-rate charts, and item pages with
 purchase-timing breakdowns (avg buy time + early/mid/late win rates).
 
+### Demo mode (no API keys needed)
+
+```bash
+python ../scripts/seed_demo.py   # fabricates 3 labeled demo patches + verdicts
+DEMO_MODE=true uvicorn app.main:app
+```
+
+The site becomes fully browsable with fabricated, clearly labeled sample data —
+for reviewers, screenshots, and deploys that must survive upstream outages.
+
 ### Test it
 
 ```bash
-pytest                 # 35 passed, 1 skipped
+pytest                 # 54 passed, 1 skipped
 # The skipped test is the golden-set LLM extraction gate; it runs only
 # when a real OPENAI_API_KEY is present:
 OPENAI_API_KEY=... pytest tests/test_golden_extraction.py -v
@@ -144,10 +192,10 @@ can be traced back to the verbatim patch note.
 - [x] **M1 — Patch pipeline:** Steam news watcher -> forum scraper -> LLM structured extraction -> Postgres -> read-only UI *(code complete, tests green)*
 - [x] **M2 — Stats layer:** community Deadlock API ingest, pre/post patch snapshots, item purchase-timing buckets, verdict badges, React hero/item pages *(code complete, tests green — data backfill in progress)*
 - [ ] **M3 — Personal layer:** Steam OpenID, match sync, sessionization, tilt analytics *(code complete, tests green — awaiting live login test)*
-- [ ] **M4 — Portfolio polish:** demo mode with seeded data, deploy, README screenshots
+- [ ] **M4 — Portfolio polish:** demo mode with seeded data *(done)*, deploy, README screenshots
 - [ ] **M5 — Companion desktop app:** live match detection feeding personal analytics
 
-Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md) · [M3 design review](docs/m3-design-review.md)
+Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md) · [M3 design review](docs/m3-design-review.md) · [M4 design review](docs/m4-design-review.md)
 
 ## Data credit
 
