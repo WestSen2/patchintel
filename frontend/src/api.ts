@@ -3,9 +3,13 @@ import type {
   HeroDetail,
   Item,
   ItemDetail,
+  Me,
+  MyAnalytics,
+  MyPatchImpact,
   PatchDetail,
   PatchImpact,
   PatchListItem,
+  SyncResult,
 } from './types'
 
 async function get<T>(path: string): Promise<T> {
@@ -22,4 +26,15 @@ export const api = {
   hero: (id: number) => get<HeroDetail>(`/api/heroes/${id}`),
   items: () => get<Item[]>('/api/items'),
   item: (id: number) => get<ItemDetail>(`/api/items/${id}`),
+}
+
+export const meApi = {
+  me: () => get<Me>('/api/me'),
+  sync: async () => {
+    const resp = await fetch('/api/me/sync', { method: 'POST' })
+    if (!resp.ok) throw new Error(`sync -> ${resp.status}`)
+    return resp.json() as Promise<SyncResult>
+  },
+  analytics: () => get<MyAnalytics>('/api/me/analytics'),
+  patchImpact: () => get<MyPatchImpact>('/api/me/patch-impact'),
 }

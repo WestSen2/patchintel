@@ -103,3 +103,47 @@ export interface ItemDetail extends Item {
   changes: ChangeOut[]
   timing: TimingOut[]
 }
+
+// ------------------------------------------------------------------ M3 types
+
+export interface Me {
+  id: number
+  steam_id: string
+  display_name: string
+  avatar_url: string
+  timezone: string
+  last_sync_at: string | null
+}
+
+export interface AnalyticsBucket {
+  label: string
+  win_rate: number | null
+  avg_kda: number | null
+  matches: number
+}
+
+export interface MyAnalytics {
+  matches: number
+  win_rate: number | null
+  avg_kda: number | null
+  by_session_game_index: AnalyticsBucket[]
+  after_loss_streak: AnalyticsBucket[]
+  by_hour: AnalyticsBucket[]
+  by_weekday: AnalyticsBucket[]
+  top_heroes: { hero_id: number; matches: number; win_rate: number; avg_kda: number }[]
+}
+
+export interface MyPatchImpact {
+  hero_ids: number[]
+  patches: {
+    patch_id: number
+    title: string
+    patch_date: string | null
+    verdicts: VerdictOut[]
+  }[]
+}
+
+export interface SyncResult {
+  imported: number
+  sessions: number
+}

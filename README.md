@@ -47,6 +47,18 @@ pip install -r requirements.txt
 cp .env.example .env      # then fill in your keys (see below)
 ```
 
+### Database migrations (M3+)
+
+The schema is managed by Alembic. Fresh clones can skip this — the app still
+auto-creates tables on startup for dev. Existing databases from M1/M2 should
+be stamped so future migrations apply cleanly:
+
+```bash
+cd backend
+python -c "from app.db import init_db; init_db()"   # create any missing tables
+alembic stamp head                                   # record current schema version
+```
+
 ### `.env` keys
 
 | Key | Required? | Where to get it |
@@ -54,6 +66,8 @@ cp .env.example .env      # then fill in your keys (see below)
 | `STEAM_API_KEY` | Yes, for patch detection | steamcommunity.com/dev/apikey (free) |
 | `OPENAI_API_KEY` | Optional | platform.openai.com — without it the pipeline uses a heuristic fallback |
 | `DEADLOCK_API_KEY` | Optional | raises community API rate limits |
+| `APP_SECRET_KEY` | Yes for login | any random string — signs the session cookie (`openssl rand -hex 32`) |
+| `APP_BASE_URL` | Optional | defaults to `http://localhost:8000`; set to your public URL in production |
 | `DATABASE_URL` | Optional | defaults to local SQLite; use `postgresql+psycopg://patchintel:patchintel@localhost:5432/patchintel` with `docker compose up -d` |
 
 `.env` is gitignored. Never commit keys.
@@ -129,11 +143,11 @@ can be traced back to the verbatim patch note.
 
 - [x] **M1 — Patch pipeline:** Steam news watcher -> forum scraper -> LLM structured extraction -> Postgres -> read-only UI *(code complete, tests green)*
 - [x] **M2 — Stats layer:** community Deadlock API ingest, pre/post patch snapshots, item purchase-timing buckets, verdict badges, React hero/item pages *(code complete, tests green — data backfill in progress)*
-- [ ] **M3 — Personal layer:** Steam OpenID, match sync, sessionization, tilt analytics
+- [ ] **M3 — Personal layer:** Steam OpenID, match sync, sessionization, tilt analytics *(code complete, tests green — awaiting live login test)*
 - [ ] **M4 — Portfolio polish:** demo mode with seeded data, deploy, README screenshots
 - [ ] **M5 — Companion desktop app:** live match detection feeding personal analytics
 
-Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md)
+Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md) · [M3 design review](docs/m3-design-review.md)
 
 ## Data credit
 

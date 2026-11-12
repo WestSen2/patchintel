@@ -5,6 +5,7 @@ import HeroesPage from './pages/HeroesPage'
 import HeroDetailPage from './pages/HeroDetailPage'
 import ItemsPage from './pages/ItemsPage'
 import ItemDetailPage from './pages/ItemDetailPage'
+import DashboardPage from './pages/DashboardPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Link to="/" className="hover:text-deco-gold transition-colors">Patches</Link>
             <Link to="/heroes" className="hover:text-deco-gold transition-colors">Heroes</Link>
             <Link to="/items" className="hover:text-deco-gold transition-colors">Items</Link>
+            <Link to="/dashboard" className="hover:text-deco-gold transition-colors">Dashboard</Link>
           </div>
         </div>
       </nav>
@@ -29,6 +31,7 @@ export default function App() {
           <Route path="/heroes/:id" element={<HeroDetailPage />} />
           <Route path="/items" element={<ItemsPage />} />
           <Route path="/items/:id" element={<ItemDetailPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </main>
       <footer className="max-w-6xl mx-auto px-6 py-6 text-xs text-deco-cream/40 border-t border-line">
