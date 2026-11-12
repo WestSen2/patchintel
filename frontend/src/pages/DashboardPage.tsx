@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { meApi, api } from '../api'
+import { meApi, api, BASE } from '../api'
 import type { AnalyticsBucket } from '../types'
 import { VerdictBadge } from '../components/VerdictBadge'
 
@@ -98,7 +98,7 @@ export default function DashboardPage() {
           tilt metrics, and what each patch did to your hero pool.
         </p>
         <a
-          href="/api/auth/steam/login"
+          href={`${BASE}/api/auth/steam/login`}
           className="inline-block px-6 py-2 border border-deco-gold text-deco-gold hover:bg-deco-gold hover:text-deco-ink transition-colors"
         >
           Sign in through Steam

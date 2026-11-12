@@ -7,6 +7,7 @@ M2 adds stats/verdicts; M3 adds Steam OpenID + personal analytics.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from .api.auth import router as auth_router
@@ -32,6 +33,14 @@ app = FastAPI(
 )
 
 app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in get_settings().cors_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(
     SessionMiddleware,
     secret_key=get_settings().app_secret_key,
     https_only=False,  # local dev; set behind TLS in production
@@ -48,4 +57,9 @@ app.include_router(web_router)
 
 @app.get("/health", tags=["meta"])
 def health() -> dict:
-    return {"status": "ok", "service": "patchintel", "version": "0.2.0"}
+    return {
+        "status": "ok",
+        "service": "patchintel",
+        "version": "0.2.0",
+        "demo_mode": get_settings().demo_mode,
+    }

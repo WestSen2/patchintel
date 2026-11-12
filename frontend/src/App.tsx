@@ -1,4 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { health } from './api'
 import PatchesPage from './pages/PatchesPage'
 import PatchDetailPage from './pages/PatchDetailPage'
 import HeroesPage from './pages/HeroesPage'
@@ -8,8 +10,14 @@ import ItemDetailPage from './pages/ItemDetailPage'
 import DashboardPage from './pages/DashboardPage'
 
 export default function App() {
+  const { data: healthData } = useQuery({ queryKey: ['health'], queryFn: health, retry: false })
   return (
     <div className="min-h-screen">
+      {healthData?.demo_mode && (
+        <div className="bg-deco-gold text-deco-ink text-center text-xs py-1.5 font-semibold tracking-wide">
+          DEMO MODE — stats on this deployment are fabricated sample data
+        </div>
+      )}
       <nav className="border-b border-line">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="deco-heading text-xl">

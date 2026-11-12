@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # Local dev default; set to https://your.domain in production.
     app_base_url: str = "http://localhost:8000"
 
+    # Demo mode: serve fabricated data banner (deployed previews)
+    demo_mode: bool = False
+
+    # Comma-separated allowed CORS origins (frontend dev server + deploy)
+    cors_origins: str = "http://localhost:5173"
+
     # Poller cadence (hours)
     patch_poll_interval_hours: int = 6
 
