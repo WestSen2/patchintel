@@ -1,10 +1,4 @@
-"""Pydantic contracts.
-
-Two families:
-- LLM extraction contract (PatchSummary / ExtractedChange) — the strict JSON
-  the summarizer must produce. Validated in code; see pipeline/summarizer.py.
-- API response models — what the /api/* endpoints return.
-"""
+"""Pydantic contracts — LLM extraction contract + API response models."""
 
 from datetime import datetime
 from enum import Enum
@@ -152,6 +146,19 @@ class ItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TimingOut(BaseModel):
+    patch_id: int | None
+    window: str
+    avg_buy_time_s: float | None
+    avg_buy_time_relative: float | None
+    win_rate_early: float | None
+    win_rate_mid: float | None
+    win_rate_late: float | None
+    matches: int
+
+    model_config = {"from_attributes": True}
+
+
 class ItemDetailOut(BaseModel):
     id: int
     name: str
@@ -159,3 +166,4 @@ class ItemDetailOut(BaseModel):
     cost: int | None
     snapshots: list[SnapshotOut]
     changes: list[ChangeOut]
+    timing: list[TimingOut]

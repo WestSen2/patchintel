@@ -74,6 +74,12 @@ def item_detail(item_id: int, db: Session = Depends(get_db)):
         .order_by(models.Change.id)
         .all()
     )
+    timing = (
+        db.query(models.ItemTimingSnapshot)
+        .filter_by(item_id=item_id)
+        .order_by(models.ItemTimingSnapshot.captured_at)
+        .all()
+    )
     return schemas.ItemDetailOut(
         id=item.id,
         name=item.name,
@@ -81,4 +87,5 @@ def item_detail(item_id: int, db: Session = Depends(get_db)):
         cost=item.cost,
         snapshots=[schemas.SnapshotOut.model_validate(s) for s in snapshots],
         changes=[schemas.ChangeOut.model_validate(c) for c in changes],
+        timing=[schemas.TimingOut.model_validate(t) for t in timing],
     )
