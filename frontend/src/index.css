@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-ink text-deco-cream font-body antialiased;
+}
+
+/* subtle art-deco card treatment */
+.deco-card {
+  @apply bg-panel border border-line rounded-sm relative;
+}
+.deco-card::before {
+  content: '';
+  @apply absolute inset-1 border border-deco-dim/30 rounded-sm pointer-events-none;
+}
+
+.deco-heading {
+  @apply font-display text-deco-gold tracking-wide;
+}
