@@ -218,3 +218,15 @@ class UserMatch(Base):
 
     # one row per user per match — sync re-runs are no-ops
     __table_args__ = (UniqueConstraint("user_id", "match_id"),)
+
+
+class DeviceToken(Base):
+    """M5: bearer tokens for the companion desktop app (stored hashed)."""
+
+    __tablename__ = "device_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

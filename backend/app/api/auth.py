@@ -126,7 +126,17 @@ def logout(request: Request):
 def get_current_user(
     request: Request, db: Session = Depends(get_db)
 ) -> models.User:
-    """Dependency for /api/me/* — 401 when not logged in."""
+    """Dependency for /api/me/* — accepts the session cookie (website) or an
+    `Authorization: Bearer` device token (M5 companion app)."""
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        from ..personal.tokens import user_for_token
+
+        user = user_for_token(db, auth[7:].strip())
+        if user is not None:
+            return user
+        raise HTTPException(status_code=401, detail="Invalid device token")
+
     user_id = request.session.get("user_id")
     if user_id is None:
         raise HTTPException(status_code=401, detail="Not signed in")
@@ -140,3 +150,24 @@ def get_current_user(
 @router.get("/me", response_model=schemas.MeOut)
 def me(user: models.User = Depends(get_current_user)):
     return schemas.MeOut.model_validate(user)
+
+
+@router.post("/me/token")
+def create_device_token(
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Issue a device token for the companion app. Shown ONCE — copy it now."""
+    from ..personal.tokens import issue_token
+
+    return {"token": issue_token(db, user)}
+
+
+@router.delete("/me/token")
+def revoke_device_tokens(
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    from ..personal.tokens import revoke_tokens
+
+    return {"revoked": revoke_tokens(db, user)}
