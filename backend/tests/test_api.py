@@ -67,3 +67,53 @@ def test_ui_pages_render(client, db_session):
     resp = client.get(f"/patches/{patch.id}")
     assert resp.status_code == 200
     assert "Warden" in resp.text
+
+
+def _seed_impact(db):
+    patch = _seed(db)
+    change = patch.changes[0]
+    db.add(
+        models.Verdict(
+            patch_id=patch.id,
+            change_id=change.id,
+            entity_type="hero",
+            entity_id=7,
+            expected_direction="down",
+            pre_win_rate=0.52,
+            post_win_rate=0.48,
+            delta_win_rate=-0.04,
+            pre_pick_rate=0.10,
+            post_pick_rate=0.11,
+            pre_matches=1200,
+            post_matches=1400,
+            ci_half_width=0.015,
+            verdict="worked",
+            reason="Win rate moved in the expected direction beyond the 95% CI.",
+        )
+    )
+    db.commit()
+    return patch
+
+
+def test_patch_impact(client, db_session):
+    patch = _seed_impact(db_session)
+    resp = client.get(f"/api/patches/{patch.id}/impact")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["patch_id"] == patch.id
+    assert len(data["verdicts"]) == 1
+    v = data["verdicts"][0]
+    assert v["verdict"] == "worked"
+    assert v["delta_win_rate"] == -0.04
+    assert v["expected_direction"] == "down"
+
+
+def test_patch_impact_empty(client, db_session):
+    patch = _seed(db_session)
+    resp = client.get(f"/api/patches/{patch.id}/impact")
+    assert resp.status_code == 200
+    assert resp.json()["verdicts"] == []
+
+
+def test_patch_impact_404(client):
+    assert client.get("/api/patches/999/impact").status_code == 404

@@ -97,6 +97,30 @@ pytest                 # 35 passed, 1 skipped
 OPENAI_API_KEY=... pytest tests/test_golden_extraction.py -v
 ```
 
+## Methodology
+
+**Verdicts ("did the patch actually work?")** — For every extracted change, we
+compare the affected entity's win rate in a pre window (7 days before the patch)
+against a post window (days 1–8 after; day 0 excluded as a settling period).
+Windows truncated by a follow-up hotfix are flagged. We use Wilson score 95%
+confidence intervals, and any window under 500 matches is reported as
+`insufficient_data` rather than drawing a conclusion. Verdicts:
+
+- `worked` / `backfired` — win rate moved in the intended / opposite direction
+  beyond the CI
+- `shifted` — pick rate changed significantly while win rate held
+- `unclear` / `no_effect` — movement inside the noise, or no measurable movement
+- `excluded` — entity not comparable across the patch (e.g. new hero)
+
+**Purchase timing** — Item win rates are split by when the item was bought
+in-match: early (< 12:00), mid (12:00–24:00), late (> 24:00), plus the average
+purchase time per patch window. This answers "is rushing this item still worth
+it after the nerf?" — the stat nobody else publishes per patch.
+
+**Every change carries its source line.** Extracted changes are only stored
+when the exact sentence they came from is kept alongside them, so any verdict
+can be traced back to the verbatim patch note.
+
 ## Roadmap
 
 - [x] **M1 — Patch pipeline:** Steam news watcher -> forum scraper -> LLM structured extraction -> Postgres -> read-only UI *(code complete, tests green)*
