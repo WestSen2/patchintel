@@ -1,10 +1,14 @@
-"""M2 stats API: heroes, items, and per-patch impact (verdicts)."""
+"""M2 stats API: heroes, items, per-patch impact (verdicts), purchase curves."""
+
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..config import get_settings
 from ..db import get_db
+from ..upstream import deadlock_analytics
 
 router = APIRouter(tags=["stats"])
 
@@ -89,3 +93,63 @@ def item_detail(item_id: int, db: Session = Depends(get_db)):
         changes=[schemas.ChangeOut.model_validate(c) for c in changes],
         timing=[schemas.TimingOut.model_validate(t) for t in timing],
     )
+
+
+CURVE_TTL = timedelta(hours=24)
+
+
+@router.get("/items/{item_id}/purchase-curve", response_model=list[schemas.PurchaseCurvePointOut])
+def item_purchase_curve_endpoint(
+    item_id: int,
+    db: Session = Depends(get_db),
+    settings=Depends(get_settings),
+):
+    """Minute-level win-rate-by-purchase-time curve (2-min slices, 0–50 min).
+
+    Cached for 24h — building a curve costs ~25 upstream calls.
+    """
+    item = db.get(models.Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    rows = (
+        db.query(models.ItemPurchaseCurve)
+        .filter_by(item_id=item_id)
+        .order_by(models.ItemPurchaseCurve.bucket_start_s)
+        .all()
+    )
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    fresh = rows and all(now - r.captured_at < CURVE_TTL for r in rows)
+
+    if not fresh:
+        curve = deadlock_analytics.item_purchase_curve(settings, item_id)
+        db.query(models.ItemPurchaseCurve).filter_by(item_id=item_id).delete()
+        for point in curve:
+            db.add(
+                models.ItemPurchaseCurve(
+                    item_id=item_id,
+                    bucket_start_s=point["bucket_start_s"],
+                    wins=point["wins"],
+                    losses=point["losses"],
+                    matches=point["matches"],
+                    captured_at=now,
+                )
+            )
+        db.commit()
+        rows = (
+            db.query(models.ItemPurchaseCurve)
+            .filter_by(item_id=item_id)
+            .order_by(models.ItemPurchaseCurve.bucket_start_s)
+            .all()
+        )
+
+    return [
+        schemas.PurchaseCurvePointOut(
+            bucket_start_s=r.bucket_start_s,
+            wins=r.wins,
+            losses=r.losses,
+            matches=r.matches,
+            win_rate=round(r.wins / r.matches, 4) if r.matches else None,
+        )
+        for r in rows
+    ]

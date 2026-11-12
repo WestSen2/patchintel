@@ -230,3 +230,23 @@ class DeviceToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ItemPurchaseCurve(Base):
+    """Cached minute-level win-rate-by-purchase-time curve for one item.
+
+    Upstream has no curve endpoint — we sweep bought_at slices (~25 calls),
+    so results are cached with a TTL instead of refetched per page view.
+    """
+
+    __tablename__ = "item_purchase_curves"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), index=True)
+    bucket_start_s: Mapped[int] = mapped_column(Integer)
+    wins: Mapped[int] = mapped_column(Integer, default=0)
+    losses: Mapped[int] = mapped_column(Integer, default=0)
+    matches: Mapped[int] = mapped_column(Integer, default=0)
+    captured_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    __table_args__ = (UniqueConstraint("item_id", "bucket_start_s"),)

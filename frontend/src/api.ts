@@ -10,6 +10,7 @@ import type {
   PatchDetail,
   PatchImpact,
   PatchListItem,
+  PurchaseCurvePoint,
   SyncResult,
 } from './types'
 
@@ -37,6 +38,7 @@ export const api = {
   hero: (id: number) => get<HeroDetail>(`/api/heroes/${id}`),
   items: () => get<Item[]>('/api/items'),
   item: (id: number) => get<ItemDetail>(`/api/items/${id}`),
+  purchaseCurve: (id: number) => get<PurchaseCurvePoint[]>(`/api/items/${id}/purchase-curve`),
 }
 
 export const health = () => get<Health>('/health')

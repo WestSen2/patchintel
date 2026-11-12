@@ -89,3 +89,38 @@ def hero_build_stats(settings: Settings, hero_id: int) -> list[dict]:
         headers=_headers(settings),
     )
     return resp.json()
+
+
+def item_purchase_curve(
+    settings: Settings,
+    item_id: int,
+    *,
+    slice_s: int = 120,
+    max_time_s: int = 3000,
+) -> list[dict]:
+    """Win rate by exact purchase time — one item_stats call per time slice.
+
+    The upstream API has no curve endpoint, but `min/max_bought_at_s` filters
+    are arbitrary, so we sweep slices (default 2-min buckets over 0–50 min)
+    and stitch a curve. ~25 upstream calls; cache results downstream.
+    Returns [{bucket_start_s, wins, losses, matches, win_rate}] with
+    zero-match slices included (win_rate None).
+    """
+    curve = []
+    for start in range(0, max_time_s, slice_s):
+        rows = item_stats(
+            settings, min_bought_at_s=start, max_bought_at_s=start + slice_s
+        )
+        row = next((r for r in rows if r.get("item_id") == item_id), None)
+        wins = row["wins"] if row else 0
+        matches = row["matches"] if row else 0
+        curve.append(
+            {
+                "bucket_start_s": start,
+                "wins": wins,
+                "losses": row["losses"] if row else 0,
+                "matches": matches,
+                "win_rate": round(wins / matches, 4) if matches else None,
+            }
+        )
+    return curve

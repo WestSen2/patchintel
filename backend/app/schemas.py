@@ -224,3 +224,11 @@ class MyAnalyticsOut(BaseModel):
     by_hour: list[AnalyticsBucket]
     by_weekday: list[AnalyticsBucket]
     top_heroes: list[dict]
+
+
+class PurchaseCurvePointOut(BaseModel):
+    bucket_start_s: int
+    wins: int
+    losses: int
+    matches: int
+    win_rate: float | None

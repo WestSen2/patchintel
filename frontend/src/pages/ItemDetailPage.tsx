@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -23,17 +22,19 @@ export default function ItemDetailPage() {
   const { id } = useParams()
   const itemId = Number(id)
   const { data, isLoading, error } = useQuery({ queryKey: ['item', itemId], queryFn: () => api.item(itemId) })
+  const curve = useQuery({
+    queryKey: ['purchase-curve', itemId],
+    queryFn: () => api.purchaseCurve(itemId),
+    enabled: !!data,
+  })
 
   if (isLoading) return <p className="text-deco-cream/60">Loading…</p>
   if (error || !data) return <p className="text-verdict-backfired">Item not found.</p>
 
-  const timingChart = data.timing.map((t) => ({
-    window: t.window === 'baseline' ? 'baseline' : `patch #${t.patch_id} ${t.window}`,
-    early: t.win_rate_early !== null ? +(t.win_rate_early * 100).toFixed(2) : null,
-    mid: t.win_rate_mid !== null ? +(t.win_rate_mid * 100).toFixed(2) : null,
-    late: t.win_rate_late !== null ? +(t.win_rate_late * 100).toFixed(2) : null,
-    avgBuy: t.avg_buy_time_s,
-    matches: t.matches,
+  const curveData = (curve.data ?? []).map((p) => ({
+    minute: p.bucket_start_s / 60,
+    winRate: p.win_rate !== null ? +(p.win_rate * 100).toFixed(2) : null,
+    matches: p.matches,
   }))
 
   return (
@@ -47,39 +48,63 @@ export default function ItemDetailPage() {
 
       <div className="deco-card p-5 mb-8">
         <h2 className="deco-heading text-lg mb-4">Purchase timing</h2>
-        {data.timing.length === 0 ? (
-          <p className="text-deco-cream/50 text-sm">No timing data yet — run the pipeline with --timing.</p>
+        {data.timing.length > 0 && (
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6">
+            {data.timing.map((t, i) => (
+              <div key={i} className="deco-card p-3">
+                <p className="text-xs uppercase tracking-wider text-deco-cream/50">
+                  {t.window === 'baseline' ? 'baseline' : `${t.window} patch #${t.patch_id}`}
+                </p>
+                <p className="text-xl mt-1">{fmtBuyTime(t.avg_buy_time_s)}</p>
+                <p className="text-xs text-deco-cream/40">avg buy time · {t.matches.toLocaleString()} matches</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {curve.isLoading ? (
+          <p className="text-deco-cream/50 text-sm">Building purchase-time curve…</p>
+        ) : curveData.length === 0 ? (
+          <p className="text-deco-cream/50 text-sm">No curve data available.</p>
         ) : (
           <>
-            <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6">
-              {data.timing.map((t, i) => (
-                <div key={i} className="deco-card p-3">
-                  <p className="text-xs uppercase tracking-wider text-deco-cream/50">
-                    {t.window === 'baseline' ? 'baseline' : `${t.window} patch #${t.patch_id}`}
-                  </p>
-                  <p className="text-xl mt-1">{fmtBuyTime(t.avg_buy_time_s)}</p>
-                  <p className="text-xs text-deco-cream/40">avg buy time · {t.matches.toLocaleString()} matches</p>
-                </div>
-              ))}
-            </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={timingChart}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={curveData}>
                 <CartesianGrid stroke="#2a3325" strokeDasharray="3 3" />
-                <XAxis dataKey="window" stroke="#8a7648" fontSize={11} />
-                <YAxis stroke="#8a7648" fontSize={12} unit="%" domain={[0, 100]} />
+                <XAxis
+                  dataKey="minute"
+                  stroke="#8a7648"
+                  fontSize={12}
+                  unit="m"
+                  type="number"
+                  domain={[0, 50]}
+                  tickCount={11}
+                />
+                <YAxis stroke="#8a7648" fontSize={12} unit="%" domain={['auto', 'auto']} />
                 <Tooltip
                   contentStyle={{ background: '#171d15', border: '1px solid #2a3325', borderRadius: 2 }}
                   labelStyle={{ color: '#c9a86a' }}
-                  formatter={(value: number | null, name) => [value === null ? 'n/a' : `${value}%`, `${name} buy`]}
+                  labelFormatter={(minute) => `bought at ~${minute}:00`}
+                  formatter={(value: number | null, _name, item) => [
+                    value === null
+                      ? 'no data'
+                      : `${value}% (${item.payload.matches.toLocaleString()} matches${item.payload.matches < 100 ? ', low sample' : ''})`,
+                    'win rate',
+                  ]}
                 />
-                <Legend />
-                <Bar dataKey="early" name="early (<12:00)" fill="#c9a86a" isAnimationActive={false} />
-                <Bar dataKey="mid" name="mid (12–24:00)" fill="#8a7648" isAnimationActive={false} />
-                <Bar dataKey="late" name="late (>24:00)" fill="#5a6b4a" isAnimationActive={false} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="winRate"
+                  stroke="#c9a86a"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              </LineChart>
             </ResponsiveContainer>
             <p className="text-xs text-deco-cream/40 mt-2">
-              Win rate split by when the item was bought in-match. Early &lt; 12 min, mid 12–24 min, late &gt; 24 min.
+              Win rate by exact purchase time (2-minute slices, last ~30 days).
+              Hover any point for its sample size — treat low-sample points as noise.
             </p>
           </>
         )}

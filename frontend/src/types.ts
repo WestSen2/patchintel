@@ -161,3 +161,11 @@ export interface MyMatch {
   net_worth: number | null
   session_id: number | null
 }
+
+export interface PurchaseCurvePoint {
+  bucket_start_s: number
+  wins: number
+  losses: number
+  matches: number
+  win_rate: number | null
+}
