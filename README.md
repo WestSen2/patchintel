@@ -201,7 +201,7 @@ can be traced back to the verbatim patch note.
 - [ ] **M4 — Portfolio polish:** demo mode with seeded data *(done)*, deploy, README screenshots
 - [ ] **M5 — Companion desktop app:** live match detection feeding personal analytics
 
-Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md) · [M3 design review](docs/m3-design-review.md) · [M4 design review](docs/m4-design-review.md)
+Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md) · [M3 design review](docs/m3-design-review.md) · [M4 design review](docs/m4-design-review.md) · [M5 design review](docs/m5-design-review.md)
 
 ## Data credit
 
