@@ -5,6 +5,7 @@ import type {
   ItemDetail,
   Me,
   MyAnalytics,
+  MyMatch,
   MyPatchImpact,
   PatchDetail,
   PatchImpact,
@@ -37,4 +38,5 @@ export const meApi = {
   },
   analytics: () => get<MyAnalytics>('/api/me/analytics'),
   patchImpact: () => get<MyPatchImpact>('/api/me/patch-impact'),
+  matches: () => get<MyMatch[]>('/api/me/matches?limit=30'),
 }

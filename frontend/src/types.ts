@@ -147,3 +147,17 @@ export interface SyncResult {
   imported: number
   sessions: number
 }
+
+export interface MyMatch {
+  id: number
+  match_id: number
+  played_at: string
+  duration_s: number
+  hero_id: number | null
+  result: string
+  kills: number
+  deaths: number
+  assists: number
+  net_worth: number | null
+  session_id: number | null
+}

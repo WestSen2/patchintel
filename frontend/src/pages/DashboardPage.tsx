@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { meApi } from '../api'
+import { meApi, api } from '../api'
 import type { AnalyticsBucket } from '../types'
 import { VerdictBadge } from '../components/VerdictBadge'
 
@@ -71,12 +71,19 @@ export default function DashboardPage() {
     queryFn: meApi.patchImpact,
     enabled: !!me.data,
   })
+  const matches = useQuery({
+    queryKey: ['me-matches'],
+    queryFn: meApi.matches,
+    enabled: !!me.data,
+  })
+  const heroes = useQuery({ queryKey: ['heroes'], queryFn: api.heroes })
   const sync = useMutation({
     mutationFn: meApi.sync,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] })
       queryClient.invalidateQueries({ queryKey: ['me-analytics'] })
       queryClient.invalidateQueries({ queryKey: ['me-impact'] })
+      queryClient.invalidateQueries({ queryKey: ['me-matches'] })
     },
   })
 
@@ -205,6 +212,47 @@ export default function DashboardPage() {
           </table>
         ) : (
           <p className="text-deco-cream/50 text-sm">Sync your matches to see your hero pool.</p>
+        )}
+      </div>
+
+      <h2 className="deco-heading text-lg mb-3">Recent matches</h2>
+      <div className="deco-card p-4 mb-8 overflow-x-auto">
+        {matches.data && matches.data.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-deco-cream/50 text-xs uppercase tracking-wider">
+                <th className="pb-2">When (UTC)</th>
+                <th className="pb-2">Hero</th>
+                <th className="pb-2">Result</th>
+                <th className="pb-2">K / D / A</th>
+                <th className="pb-2">Length</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matches.data.map((m) => {
+                const heroName = heroes.data?.find((h) => h.id === m.hero_id)?.name
+                return (
+                  <tr key={m.id} className="border-t border-line">
+                    <td className="py-2 text-deco-cream/70">{m.played_at.slice(0, 16).replace('T', ' ')}</td>
+                    <td>
+                      {m.hero_id !== null ? (
+                        <Link to={`/heroes/${m.hero_id}`} className="text-deco-gold hover:underline">
+                          {heroName ?? `hero #${m.hero_id}`}
+                        </Link>
+                      ) : '—'}
+                    </td>
+                    <td className={m.result === 'win' ? 'text-verdict-worked' : 'text-verdict-backfired'}>
+                      {m.result}
+                    </td>
+                    <td>{m.kills} / {m.deaths} / {m.assists}</td>
+                    <td className="text-deco-cream/70">{Math.round(m.duration_s / 60)} min</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-deco-cream/50 text-sm">No matches yet — sync first.</p>
         )}
       </div>
 
