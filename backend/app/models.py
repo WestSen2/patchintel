@@ -8,12 +8,16 @@ Design notes:
 - Hero/Item use the game's numeric IDs as PKs; never join on display names.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Patch(Base):
@@ -29,9 +33,9 @@ class Patch(Base):
     status: Mapped[str] = mapped_column(String(32), default="detected", index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     llm_generated: Mapped[bool] = mapped_column(Boolean, default=False)
-    ingested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utcnow, onupdate=_utcnow
     )
 
     changes: Mapped[list["Change"]] = relationship(
