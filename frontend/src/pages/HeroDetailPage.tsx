@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -21,7 +22,8 @@ export default function HeroDetailPage() {
 
   const chartData = data.snapshots.map((s) => ({
     date: s.window_start.slice(0, 10),
-    winRate: +(s.win_rate * 100).toFixed(2),
+    pre: s.window === 'pre' ? +(s.win_rate * 100).toFixed(2) : null,
+    post: s.window === 'post' ? +(s.win_rate * 100).toFixed(2) : null,
     window: s.window,
     matches: s.matches,
     patch: s.patch_id,
@@ -45,12 +47,14 @@ export default function HeroDetailPage() {
               <Tooltip
                 contentStyle={{ background: '#171d15', border: '1px solid #2a3325', borderRadius: 2 }}
                 labelStyle={{ color: '#c9a86a' }}
-                formatter={(value: number, _name, item) => [
-                  `${value}% (${item.payload.window}, ${item.payload.matches.toLocaleString()} matches)`,
-                  'win rate',
+                formatter={(value: number | null, name, item) => [
+                  value === null ? 'n/a' : `${value}% (${item.payload.matches.toLocaleString()} matches)`,
+                  `${name} window`,
                 ]}
               />
-              <Line type="monotone" dataKey="winRate" stroke="#c9a86a" strokeWidth={2} dot={{ r: 3 }} />
+              <Legend />
+              <Line type="monotone" dataKey="pre" name="pre" stroke="#c9a86a" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+              <Line type="monotone" dataKey="post" name="post" stroke="#8a9a6a" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="6 3" connectNulls />
             </LineChart>
           </ResponsiveContainer>
         )}

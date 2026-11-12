@@ -87,7 +87,19 @@ export interface Item {
   cost: number | null
 }
 
+export interface TimingOut {
+  patch_id: number | null
+  window: string
+  avg_buy_time_s: number | null
+  avg_buy_time_relative: number | null
+  win_rate_early: number | null
+  win_rate_mid: number | null
+  win_rate_late: number | null
+  matches: number
+}
+
 export interface ItemDetail extends Item {
   snapshots: Snapshot[]
   changes: ChangeOut[]
+  timing: TimingOut[]
 }

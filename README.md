@@ -64,16 +64,34 @@ cp .env.example .env      # then fill in your keys (see below)
 # 1. Ingest patches (detect -> scrape full notes -> LLM extraction -> DB)
 python -m app.pipeline.run --seed-entities
 
-# 2. Serve the app
+# 2. (M2) Backfill all historical patches, then compute stat snapshots,
+#    purchase-timing buckets, and verdicts. Takes a while on first run
+#    (~10 upstream API calls per patch, rate-limit friendly).
+python -m app.pipeline.run --backfill --snapshots --timing --verdicts
+
+# 3. Serve the API + fallback Jinja UI
 uvicorn app.main:app --reload
 #    UI:  http://localhost:8000/
 #    API: http://localhost:8000/api/patches  (docs at /docs)
 ```
 
+### Frontend (React, M2)
+
+```bash
+brew install node          # once, if you don't have Node
+cd frontend
+npm install
+npm run dev                # http://localhost:5173 (proxies /api -> :8000)
+```
+
+The React app is the primary UI: patches list, patch impact (verdict badges,
+stat blocks), hero pages with pre/post win-rate charts, and item pages with
+purchase-timing breakdowns (avg buy time + early/mid/late win rates).
+
 ### Test it
 
 ```bash
-pytest                 # 9 passed, 1 skipped
+pytest                 # 35 passed, 1 skipped
 # The skipped test is the golden-set LLM extraction gate; it runs only
 # when a real OPENAI_API_KEY is present:
 OPENAI_API_KEY=... pytest tests/test_golden_extraction.py -v
@@ -82,12 +100,12 @@ OPENAI_API_KEY=... pytest tests/test_golden_extraction.py -v
 ## Roadmap
 
 - [x] **M1 — Patch pipeline:** Steam news watcher -> forum scraper -> LLM structured extraction -> Postgres -> read-only UI *(code complete, tests green)*
-- [ ] **M2 — Stats layer:** community Deadlock API ingest, pre/post patch snapshots, verdict badges, hero/item pages
+- [x] **M2 — Stats layer:** community Deadlock API ingest, pre/post patch snapshots, item purchase-timing buckets, verdict badges, React hero/item pages *(code complete, tests green — data backfill in progress)*
 - [ ] **M3 — Personal layer:** Steam OpenID, match sync, sessionization, tilt analytics
 - [ ] **M4 — Portfolio polish:** demo mode with seeded data, deploy, README screenshots
 - [ ] **M5 — Companion desktop app:** live match detection feeding personal analytics
 
-Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md)
+Docs: [full blueprint](docs/blueprint.md) · [M1 design review](docs/m1-design-review.md) · [M2 design review](docs/m2-design-review.md) · [M2 item-timing addendum](docs/m2-addendum-item-timing.md)
 
 ## Data credit
 

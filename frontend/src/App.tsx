@@ -4,6 +4,7 @@ import PatchDetailPage from './pages/PatchDetailPage'
 import HeroesPage from './pages/HeroesPage'
 import HeroDetailPage from './pages/HeroDetailPage'
 import ItemsPage from './pages/ItemsPage'
+import ItemDetailPage from './pages/ItemDetailPage'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/heroes" element={<HeroesPage />} />
           <Route path="/heroes/:id" element={<HeroDetailPage />} />
           <Route path="/items" element={<ItemsPage />} />
+          <Route path="/items/:id" element={<ItemDetailPage />} />
         </Routes>
       </main>
       <footer className="max-w-6xl mx-auto px-6 py-6 text-xs text-deco-cream/40 border-t border-line">

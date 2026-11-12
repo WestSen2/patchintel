@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 
 export default function ItemsPage() {
@@ -24,10 +25,10 @@ export default function ItemsPage() {
           <h2 className="deco-heading text-lg mb-3">{tier > 0 ? `Tier ${tier}` : 'Other'}</h2>
           <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
             {items?.map((i) => (
-              <div key={i.id} className="deco-card p-3 flex justify-between items-center">
+              <Link key={i.id} to={`/items/${i.id}`} className="deco-card p-3 flex justify-between items-center hover:border-deco-gold transition-colors">
                 <span>{i.name}</span>
                 {i.cost !== null && <span className="text-xs text-deco-dim">{i.cost.toLocaleString()}</span>}
-              </div>
+              </Link>
             ))}
           </div>
         </div>
