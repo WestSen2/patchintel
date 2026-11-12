@@ -1,7 +1,7 @@
 """Pipeline orchestrator tests: idempotency, scrape-failure path, official
-contents shortcut, feed filtering, and the verbatim source_line gate."""
+contents shortcut, feed filtering, backfill pagination, source_line gate."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import mock
 
 from app import models
@@ -19,14 +19,21 @@ NOTES = (
     "Yamato: Power Slash collision radius reduced by 8%\n"
 )
 
+BASE_DATE = datetime(2026, 1, 1)
 
-def _item(gid: str = "1", contents: str = "", feedname: str = "steam_community_announcements") -> NewsItem:
+
+def _item(
+    gid: str = "1",
+    contents: str = "",
+    feedname: str = "steam_community_announcements",
+    days_ago: int = 0,
+) -> NewsItem:
     return NewsItem(
         gid=gid,
         title="Deadlock - Gameplay Update - 01-01-2026",
         url=f"https://forums.playdeadlock.com/threads/{gid}",
         contents=contents,
-        date=datetime(2026, 1, 1),
+        date=BASE_DATE - timedelta(days=days_ago),
         feedname=feedname,
     )
 
@@ -89,8 +96,47 @@ def test_is_patch_candidate_requires_official_feed():
     assert steam_news.is_patch_candidate(official)
     assert not steam_news.is_patch_candidate(_item(feedname="PC Gamer"))
     assert not steam_news.is_patch_candidate(
-        NewsItem(gid="x", title="Deadlock cosplay contest", url="", contents="", date=datetime(2026, 1, 1))
+        NewsItem(gid="x", title="Deadlock cosplay contest", url="", contents="", date=BASE_DATE)
     )
+
+
+def test_backfill_pages_backwards_until_short_page(db_session):
+    """Backfill must keep paging while pages come back full, then stop."""
+    settings = get_settings()
+    page1 = [_item("p1-a", days_ago=10), _item("p1-b", days_ago=20)]
+    page2 = [_item("p2-a", days_ago=30)]  # short page -> stop after this
+
+    calls: list[dict] = []
+
+    def fake_fetch(settings, count=20, enddate=None):
+        calls.append({"count": count, "enddate": enddate})
+        return [page1, page2][len(calls) - 1]
+
+    with mock.patch(
+        "app.pipeline.orchestrator.steam_news.fetch_recent_news",
+        side_effect=fake_fetch,
+    ):
+        stats = orchestrator.PipelineStats()
+        orchestrator.backfill_patches(db_session, settings, stats)
+
+    assert len(calls) == 2, "should stop after the first short page"
+    assert calls[0]["enddate"] is None  # first page: no enddate
+    assert calls[1]["enddate"] is not None  # later pages: paged by enddate
+    assert stats.detected_new == 3
+    assert db_session.query(models.Patch).count() == 3
+
+
+def test_backfill_is_idempotent(db_session):
+    settings = get_settings()
+    with mock.patch(
+        "app.pipeline.orchestrator.steam_news.fetch_recent_news",
+        return_value=[_item("bf-1")],
+    ):
+        orchestrator.backfill_patches(db_session, settings, orchestrator.PipelineStats())
+        second = orchestrator.PipelineStats()
+        orchestrator.backfill_patches(db_session, settings, second)
+    assert second.detected_new == 0
+    assert db_session.query(models.Patch).count() == 1
 
 
 def test_scrape_failure_goes_to_needs_review(db_session):
