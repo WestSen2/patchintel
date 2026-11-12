@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
 
     app_secret_key: str = "dev-only-change-me"
+    # Public base URL of the app — Steam OpenID realm/return_to.
+    # Local dev default; set to https://your.domain in production.
+    app_base_url: str = "http://localhost:8000"
 
     # Poller cadence (hours)
     patch_poll_interval_hours: int = 6

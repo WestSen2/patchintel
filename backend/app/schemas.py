@@ -167,3 +167,60 @@ class ItemDetailOut(BaseModel):
     snapshots: list[SnapshotOut]
     changes: list[ChangeOut]
     timing: list[TimingOut]
+
+
+# ------------------------------------------------------------------ M3 schemas
+
+class MeOut(BaseModel):
+    id: int
+    steam_id: str
+    display_name: str
+    avatar_url: str
+    timezone: str
+    last_sync_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class UserMatchOut(BaseModel):
+    id: int
+    match_id: int
+    played_at: datetime
+    duration_s: int
+    hero_id: int | None
+    result: str
+    kills: int
+    deaths: int
+    assists: int
+    net_worth: int | None
+    session_id: int | None
+
+    model_config = {"from_attributes": True}
+
+
+class SessionOut(BaseModel):
+    id: int
+    started_at: datetime
+    ended_at: datetime
+    game_count: int
+    wins: int
+
+    model_config = {"from_attributes": True}
+
+
+class AnalyticsBucket(BaseModel):
+    label: str
+    win_rate: float | None
+    avg_kda: float | None
+    matches: int
+
+
+class MyAnalyticsOut(BaseModel):
+    matches: int
+    win_rate: float | None
+    avg_kda: float | None
+    by_session_game_index: list[AnalyticsBucket]
+    after_loss_streak: list[AnalyticsBucket]
+    by_hour: list[AnalyticsBucket]
+    by_weekday: list[AnalyticsBucket]
+    top_heroes: list[dict]

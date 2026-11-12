@@ -7,9 +7,12 @@ M2 adds stats/verdicts; M3 adds Steam OpenID + personal analytics.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 
+from .api.auth import router as auth_router
 from .api.patches import router as patches_router
 from .api.stats import router as stats_router
+from .config import get_settings
 from .db import init_db
 from .web import router as web_router
 
@@ -27,8 +30,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=get_settings().app_secret_key,
+    https_only=False,  # local dev; set behind TLS in production
+    same_site="lax",
+    max_age=30 * 24 * 3600,
+)
+
 app.include_router(patches_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(web_router)
 
 

@@ -11,7 +11,7 @@ Design notes:
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -153,3 +153,68 @@ class ItemTimingSnapshot(Base):
     win_rate_late: Mapped[float | None] = mapped_column(Float, nullable=True)
     matches: Mapped[int] = mapped_column(Integer, default=0)
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+# ------------------------------------------------------------------ M3 tables
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    steam_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(200), default="")
+    avatar_url: Mapped[str] = mapped_column(String(1000), default="")
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    matches: Mapped[list["UserMatch"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", order_by="UserMatch.played_at"
+    )
+    sessions: Mapped[list["PlaySession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", order_by="PlaySession.started_at"
+    )
+
+
+class PlaySession(Base):
+    """A run of consecutive games; a gap > 45 min starts a new session."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime)
+    ended_at: Mapped[datetime] = mapped_column(DateTime)
+    game_count: Mapped[int] = mapped_column(Integer, default=0)
+    wins: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
+    matches: Mapped[list["UserMatch"]] = relationship(
+        back_populates="session", order_by="UserMatch.played_at"
+    )
+
+
+class UserMatch(Base):
+    __tablename__ = "user_matches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    match_id: Mapped[int] = mapped_column(Integer, index=True)
+    played_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    duration_s: Mapped[int] = mapped_column(Integer, default=0)
+    hero_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    result: Mapped[str] = mapped_column(String(8), default="")  # win|loss
+    kills: Mapped[int] = mapped_column(Integer, default=0)
+    deaths: Mapped[int] = mapped_column(Integer, default=0)
+    assists: Mapped[int] = mapped_column(Integer, default=0)
+    net_worth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    items_json: Mapped[list] = mapped_column(JSON, default=list)
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sessions.id"), nullable=True, index=True
+    )
+
+    user: Mapped["User"] = relationship(back_populates="matches")
+    session: Mapped["PlaySession | None"] = relationship(back_populates="matches")
+
+    # one row per user per match — sync re-runs are no-ops
+    __table_args__ = (UniqueConstraint("user_id", "match_id"),)
