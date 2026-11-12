@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       // backend: uvicorn app.main:app --reload (port 8000)
       '/api': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
     },
   },
 })

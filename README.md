@@ -5,6 +5,12 @@
 
 PatchIntel is a Deadlock (Valve) analytics platform that automatically links every balance change in every patch to the measured stat outcome that followed it — win-rate deltas, pick-rate shifts, and build-order changes — and publishes a per-change verdict: **nerf worked / unclear / backfired**.
 
+![Patch history](docs/screenshots/patches.png)
+
+![Per-change verdicts with measured win-rate deltas](docs/screenshots/patch-impact.png)
+
+![Item purchase-timing analytics](docs/screenshots/item-timing.png)
+
 ## Product shape
 
 - **Web app** — patch impact reports, patch history timeline, hero/item pages with patch-boundary charts, build-order explorer, personal dashboard (Steam sign-in)

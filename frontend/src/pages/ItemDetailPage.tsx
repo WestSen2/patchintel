@@ -73,9 +73,9 @@ export default function ItemDetailPage() {
                   formatter={(value: number | null, name) => [value === null ? 'n/a' : `${value}%`, `${name} buy`]}
                 />
                 <Legend />
-                <Bar dataKey="early" name="early (<12:00)" fill="#c9a86a" />
-                <Bar dataKey="mid" name="mid (12–24:00)" fill="#8a7648" />
-                <Bar dataKey="late" name="late (>24:00)" fill="#5a6b4a" />
+                <Bar dataKey="early" name="early (<12:00)" fill="#c9a86a" isAnimationActive={false} />
+                <Bar dataKey="mid" name="mid (12–24:00)" fill="#8a7648" isAnimationActive={false} />
+                <Bar dataKey="late" name="late (>24:00)" fill="#5a6b4a" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
             <p className="text-xs text-deco-cream/40 mt-2">
