@@ -90,15 +90,21 @@ def time_patterns(
     )
 
 
-def top_heroes(matches: list[models.UserMatch], limit: int = 5) -> list[dict]:
+def top_heroes(
+    matches: list[models.UserMatch],
+    limit: int = 5,
+    hero_names: dict[int, str] | None = None,
+) -> list[dict]:
     by_hero: dict[int, list[models.UserMatch]] = defaultdict(list)
     for m in matches:
         if m.hero_id is not None:
             by_hero[m.hero_id].append(m)
     ranked = sorted(by_hero.items(), key=lambda kv: -len(kv[1]))[:limit]
+    names = hero_names or {}
     return [
         {
             "hero_id": hero_id,
+            "hero_name": names.get(hero_id),
             "matches": len(ms),
             "win_rate": round(sum(1 for m in ms if m.result == "win") / len(ms), 4),
             "avg_kda": round(sum(_kda(m) for m in ms) / len(ms), 3),
@@ -107,7 +113,11 @@ def top_heroes(matches: list[models.UserMatch], limit: int = 5) -> list[dict]:
     ]
 
 
-def compute_analytics(matches: list[models.UserMatch], tz_name: str) -> dict:
+def compute_analytics(
+    matches: list[models.UserMatch],
+    tz_name: str,
+    hero_names: dict[int, str] | None = None,
+) -> dict:
     by_hour, by_day = time_patterns(matches, tz_name)
     n = len(matches)
     return {
@@ -120,5 +130,5 @@ def compute_analytics(matches: list[models.UserMatch], tz_name: str) -> dict:
         "after_loss_streak": loss_streak_response(matches),
         "by_hour": by_hour,
         "by_weekday": by_day,
-        "top_heroes": top_heroes(matches),
+        "top_heroes": top_heroes(matches, hero_names=hero_names),
     }

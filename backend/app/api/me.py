@@ -75,7 +75,8 @@ def my_analytics(
         .order_by(models.UserMatch.played_at)
         .all()
     )
-    return analytics.compute_analytics(matches, user.timezone)
+    hero_names = {h.id: h.name for h in db.query(models.Hero).all()}
+    return analytics.compute_analytics(matches, user.timezone, hero_names=hero_names)
 
 
 @router.get("/me/patch-impact")

@@ -193,7 +193,7 @@ export default function DashboardPage() {
                 <tr key={h.hero_id} className="border-t border-line">
                   <td className="py-2">
                     <Link to={`/heroes/${h.hero_id}`} className="text-deco-gold hover:underline">
-                      hero #{h.hero_id}
+                      {h.hero_name ?? `hero #${h.hero_id}`}
                     </Link>
                   </td>
                   <td>{h.matches}</td>

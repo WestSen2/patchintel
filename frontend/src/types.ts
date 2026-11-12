@@ -130,7 +130,7 @@ export interface MyAnalytics {
   after_loss_streak: AnalyticsBucket[]
   by_hour: AnalyticsBucket[]
   by_weekday: AnalyticsBucket[]
-  top_heroes: { hero_id: number; matches: number; win_rate: number; avg_kda: number }[]
+  top_heroes: { hero_id: number; hero_name: string | null; matches: number; win_rate: number; avg_kda: number }[]
 }
 
 export interface MyPatchImpact {
