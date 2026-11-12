@@ -64,9 +64,13 @@ cp .env.example .env      # then fill in your keys (see below)
 # 1. Ingest patches (detect -> scrape full notes -> LLM extraction -> DB)
 python -m app.pipeline.run --seed-entities
 
-# 2. (M2) Backfill all historical patches, then compute stat snapshots,
-#    purchase-timing buckets, and verdicts. Takes a while on first run
-#    (~10 upstream API calls per patch, rate-limit friendly).
+# 2. (M2) Backfill historical patches, then compute stat snapshots,
+#    purchase-timing buckets, and verdicts. First do a quick trial run on a
+#    few patches to sanity-check everything:
+python -m app.pipeline.run --backfill --max-patches 3 --snapshots --timing --verdicts
+
+#    Then the full run — takes a while (~10 upstream API calls per patch,
+#    rate-limit friendly; safe to Ctrl-C and re-run, it resumes):
 python -m app.pipeline.run --backfill --snapshots --timing --verdicts
 
 # 3. Serve the API + fallback Jinja UI

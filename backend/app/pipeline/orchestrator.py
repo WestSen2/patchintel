@@ -76,12 +76,18 @@ def detect_new_patches(db: Session, settings: Settings, stats: PipelineStats) ->
     _insert_candidates(db, steam_news.fetch_recent_news(settings), stats)
 
 
-def backfill_patches(db: Session, settings: Settings, stats: PipelineStats) -> None:
+def backfill_patches(
+    db: Session,
+    settings: Settings,
+    stats: PipelineStats,
+    max_new: int | None = None,
+) -> None:
     """Page backwards through Steam news history to ingest ALL past patches.
 
     Steam returns items newest-first; `enddate` asks for items strictly
     before a timestamp. We stop when a page comes back short (history
     exhausted) or empty, with a hard page cap as a safety net.
+    `max_new` caps how many new patches are ingested (trial runs).
     """
     enddate = None
     for _ in range(BACKFILL_MAX_PAGES):
@@ -90,6 +96,11 @@ def backfill_patches(db: Session, settings: Settings, stats: PipelineStats) -> N
         )
         if not items:
             break
+        if max_new is not None:
+            remaining = max_new - stats.detected_new
+            if remaining <= 0:
+                break
+            items = items[:remaining]
         _insert_candidates(db, items, stats)
         enddate = int(min(i.date for i in items).timestamp()) - 1
         if len(items) < BACKFILL_PAGE_SIZE:
@@ -175,10 +186,11 @@ def run_pipeline(
     settings: Settings,
     summarizer: PatchSummarizer,
     backfill: bool = False,
+    max_patches: int | None = None,
 ) -> PipelineStats:
     stats = PipelineStats()
     if backfill:
-        backfill_patches(db, settings, stats)
+        backfill_patches(db, settings, stats, max_new=max_patches)
     detect_new_patches(db, settings, stats)
     enrich_patches(db, stats)
     extract_changes(db, summarizer, stats)

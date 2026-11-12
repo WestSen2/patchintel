@@ -137,7 +137,23 @@ def test_backfill_is_idempotent(db_session):
         second = orchestrator.PipelineStats()
         orchestrator.backfill_patches(db_session, settings, second)
     assert second.detected_new == 0
-    assert db_session.query(models.Patch).count() == 1
+
+
+def test_backfill_max_new_caps_ingested(db_session):
+    """--max-patches: backfill ingests at most N new patches and stops paging."""
+    settings = get_settings()
+    items = [_item(f"cap-{i}", days_ago=i) for i in range(5)]
+
+    with mock.patch(
+        "app.pipeline.orchestrator.steam_news.fetch_recent_news",
+        return_value=items,
+    ) as fetch:
+        stats = orchestrator.PipelineStats()
+        orchestrator.backfill_patches(db_session, settings, stats, max_new=3)
+
+    assert stats.detected_new == 3
+    assert db_session.query(models.Patch).count() == 3
+    assert fetch.call_count == 1, "cap reached -> no further pages"
 
 
 def test_scrape_failure_goes_to_needs_review(db_session):

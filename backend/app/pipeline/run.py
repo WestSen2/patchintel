@@ -26,6 +26,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the PatchIntel pipeline")
     parser.add_argument("--seed-entities", action="store_true")
     parser.add_argument("--backfill", action="store_true")
+    parser.add_argument("--max-patches", type=int, default=None, metavar="N",
+                        help="cap new patches ingested / processed (trial runs; "
+                             "combine with --backfill and/or the stats flags)")
     parser.add_argument("--snapshots", action="store_true",
                         help="capture pre/post stat snapshots for extracted patches")
     parser.add_argument("--timing", action="store_true",
@@ -42,7 +45,10 @@ def main() -> None:
             heroes, items = seed_entities(db, settings)
             print(f"[seed] {heroes} heroes, {items} items")
 
-        stats = run_pipeline(db, settings, get_summarizer(settings), backfill=args.backfill)
+        stats = run_pipeline(
+            db, settings, get_summarizer(settings),
+            backfill=args.backfill, max_patches=args.max_patches,
+        )
         print(
             f"[done] new={stats.detected_new} enriched={stats.enriched} "
             f"extracted={stats.extracted} needs_review={stats.needs_review} "
@@ -52,7 +58,14 @@ def main() -> None:
             print(f"  [warn] {err}")
 
         if args.snapshots or args.timing or args.verdicts:
-            patches = db.query(models.Patch).filter_by(status="extracted").all()
+            query = (
+                db.query(models.Patch)
+                .filter_by(status="extracted")
+                .order_by(models.Patch.patch_date.desc())
+            )
+            if args.max_patches is not None:
+                query = query.limit(args.max_patches)
+            patches = query.all()
             for patch in patches:
                 if args.snapshots:
                     rows = snapshot_patch(db, settings, patch)
