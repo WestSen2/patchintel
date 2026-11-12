@@ -7,10 +7,11 @@ Answers three questions:
   3. What do hero build stats offer (build paths, win rates)?
 
 Usage:
-    python scripts/spike_deadlock_api.py                 # unauthenticated (lower limits)
+    python scripts/spike_deadlock_api.py                 # unauthenticated
     DEADLOCK_API_KEY=... python scripts/spike_deadlock_api.py
+    python scripts/spike_deadlock_api.py 135954275       # explicit match_id
 
-Respect the service: this script makes ~5 requests total.
+Respect the service: this script makes ~4 requests total.
 Docs: https://api.deadlock-api.com/docs
 """
 
@@ -40,6 +41,15 @@ def show(title: str, data, limit: int = 1200) -> None:
     print(text[:limit] + ("\n... [truncated]" if len(text) > limit else ""))
 
 
+def get_match_id(c: httpx.Client) -> int | None:
+    """Grab a live match_id from the active-matches feed (always available)."""
+    r = c.get("/v1/matches/active")
+    if r.status_code != 200:
+        return None
+    matches = r.json()
+    return matches[0]["match_id"] if matches else None
+
+
 def main() -> int:
     findings: list[str] = []
 
@@ -48,9 +58,10 @@ def main() -> int:
         r = c.get("/v1/assets/heroes")
         r.raise_for_status()
         heroes = r.json()
-        print(f"[ok] /v1/assets/heroes -> {len(heroes)} heroes")
-        hero_id = heroes[0]["id"] if heroes else None
-        hero_name = heroes[0].get("name") if heroes else None
+        playable = [h for h in heroes if not h.get("disabled")]
+        print(f"[ok] /v1/assets/heroes -> {len(heroes)} total, {len(playable)} playable")
+        hero_id = playable[0]["id"] if playable else None
+        hero_name = playable[0].get("name") if playable else None
 
         # --- Q1: hero aggregate stats -------------------------------------
         r = c.get("/v1/analytics/hero-stats")
@@ -63,42 +74,34 @@ def main() -> int:
         else:
             findings.append(f"hero-stats FAILED: {r.status_code} {r.text[:200]}")
 
-        # --- Q2: match metadata -> item timing? (THE critical question) ---
-        # Need a recent match_id: pull one from hero build stats or leaderboard
-        match_id = None
-        r = c.get(f"/v1/analytics/hero-build-stats/{hero_id}") if hero_id else None
-        if r is not None and r.status_code == 200:
-            builds = r.json()
-            show(f"Q3: /v1/analytics/hero-build-stats/{hero_id} ({hero_name})", builds)
-            findings.append("hero-build-stats: OK — inspect output for build-path fields")
-        elif r is not None:
-            findings.append(f"hero-build-stats FAILED: {r.status_code} {r.text[:200]}")
-
-        if match_id is None:
-            r = c.get("/v1/leaderboard/NA")
+        # --- Q3: hero build stats ------------------------------------------
+        if hero_id:
+            r = c.get(f"/v1/analytics/hero-build-stats/{hero_id}")
             if r.status_code == 200:
-                lb = r.json()
-                entries = lb if isinstance(lb, list) else lb.get("entries", [])
-                for e in entries[:5]:
-                    if isinstance(e, dict) and e.get("last_match_id"):
-                        match_id = e["last_match_id"]
-                        break
+                show(f"Q3: /v1/analytics/hero-build-stats/{hero_id} ({hero_name})", r.json())
+                findings.append("hero-build-stats: OK — build-level win/loss/matches available")
+            else:
+                findings.append(f"hero-build-stats FAILED: {r.status_code} {r.text[:200]}")
 
+        # --- Q2: match metadata -> item timing? (THE critical question) ---
+        match_id = int(sys.argv[1]) if len(sys.argv) > 1 else get_match_id(c)
         if match_id:
+            print(f"[ok] probing match metadata for match_id={match_id}")
             r = c.get(f"/v1/matches/{match_id}/metadata")
             if r.status_code == 200:
                 meta = r.json()
-                show(f"Q2: /v1/matches/{match_id}/metadata", meta, limit=3000)
+                show(f"Q2: /v1/matches/{match_id}/metadata", meta, limit=4000)
                 text = json.dumps(meta).lower()
-                has_timing = any(k in text for k in ("purchase_time", "buy_time", "time_s", "game_time"))
+                signals = [k for k in ("purchase_time", "buy_time", "time_s", "game_time", "items") if k in text]
                 findings.append(
-                    f"match metadata item-timing signals present: {has_timing} "
-                    "(manual inspection required — look for per-item timestamps/order)"
+                    f"match metadata timing/item signals found: {signals or 'NONE'} "
+                    "— inspect output above; per-item timestamps = full build-order design, "
+                    "final inventory only = item-sequence fallback"
                 )
             else:
                 findings.append(f"match metadata FAILED: {r.status_code} {r.text[:200]}")
         else:
-            findings.append("could not obtain a match_id — rerun later or pass one manually")
+            findings.append("could not obtain a match_id — pass one: spike_deadlock_api.py <match_id>")
 
     print(f"\n{'=' * 70}\nFINDINGS\n{'=' * 70}")
     for f in findings:
