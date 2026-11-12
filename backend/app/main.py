@@ -40,11 +40,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_settings = get_settings()
+_is_prod = _settings.app_base_url.startswith("https")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=get_settings().app_secret_key,
-    https_only=False,  # local dev; set behind TLS in production
-    same_site="lax",
+    secret_key=_settings.app_secret_key,
+    https_only=_is_prod,  # prod: Secure cookies over TLS
+    same_site="none" if _is_prod else "lax",  # prod: cross-origin frontend needs None
     max_age=30 * 24 * 3600,
 )
 
