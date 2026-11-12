@@ -101,10 +101,11 @@ def test_is_patch_candidate_requires_official_feed():
 
 
 def test_backfill_pages_backwards_until_short_page(db_session):
-    """Backfill must keep paging while pages come back full, then stop."""
+    """Backfill keeps paging while pages are full, stops on the first short one."""
     settings = get_settings()
-    page1 = [_item("p1-a", days_ago=10), _item("p1-b", days_ago=20)]
-    page2 = [_item("p2-a", days_ago=30)]  # short page -> stop after this
+    page_size = orchestrator.BACKFILL_PAGE_SIZE
+    page1 = [_item(f"p1-{i}", days_ago=i) for i in range(page_size)]  # full page
+    page2 = [_item("p2-0", days_ago=page_size + 1)]                    # short page
 
     calls: list[dict] = []
 
@@ -120,10 +121,10 @@ def test_backfill_pages_backwards_until_short_page(db_session):
         orchestrator.backfill_patches(db_session, settings, stats)
 
     assert len(calls) == 2, "should stop after the first short page"
-    assert calls[0]["enddate"] is None  # first page: no enddate
+    assert calls[0]["enddate"] is None   # first page: no enddate
     assert calls[1]["enddate"] is not None  # later pages: paged by enddate
-    assert stats.detected_new == 3
-    assert db_session.query(models.Patch).count() == 3
+    assert stats.detected_new == page_size + 1
+    assert db_session.query(models.Patch).count() == page_size + 1
 
 
 def test_backfill_is_idempotent(db_session):
