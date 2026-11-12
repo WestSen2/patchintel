@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}PatchIntel — Patch History{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Deadlock Patch History</h1>
+<p class="text-sm text-gray-400 mb-6">
+  Every patch, parsed into structured changes. Did the patch actually work? Verdicts arrive in M2.
+</p>
+
+{% if not rows %}
+<div class="border border-gray-700 rounded-lg p-6 text-gray-400">
+  No patches ingested yet. Run the pipeline:
+  <code class="text-gray-200">python -m app.pipeline.run</code>
+</div>
+{% endif %}
+
+<div class="space-y-4">
+  {% for patch, change_count in rows %}
+  <a href="/patches/{{ patch.id }}"
+     class="block border border-gray-800 hover:border-gray-600 rounded-lg p-4 transition">
+    <div class="flex items-center justify-between gap-4">
+      <h2 class="font-semibold">{{ patch.title }}</h2>
+      <span class="text-xs px-2 py-1 rounded
+        {{ 'bg-green-900 text-green-300' if patch.status == 'extracted'
+           else 'bg-yellow-900 text-yellow-300' if patch.status == 'needs_review'
+           else 'bg-gray-800 text-gray-300' }}">
+        {{ patch.status }}
+      </span>
+    </div>
+    <p class="text-sm text-gray-400 mt-1">
+      {{ patch.patch_date.strftime('%Y-%m-%d') if patch.patch_date else 'date unknown' }}
+      · {{ change_count }} changes
+      {% if not patch.llm_generated %}· heuristic summary{% endif %}
+    </p>
+    {% if patch.summary %}
+    <p class="text-sm text-gray-300 mt-2">{{ patch.summary }}</p>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

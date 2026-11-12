@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950 text-gray-100">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PatchIntel{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen">
+  <nav class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <a href="/" class="font-bold text-lg">PatchIntel</a>
+    <span class="text-xs text-gray-500">did the patch actually work?</span>
+  </nav>
+  <main class="max-w-4xl mx-auto px-6 py-8">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="max-w-4xl mx-auto px-6 py-6 text-xs text-gray-600 border-t border-gray-900">
+    Community project, not affiliated with Valve. Data: Steam Web API,
+    forums.playdeadlock.com, deadlock-api.com.
+  </footer>
+</body>
+</html>

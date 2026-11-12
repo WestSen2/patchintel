@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}PatchIntel — {{ patch.title }}{% endblock %}
+{% block content %}
+<a href="/" class="text-sm text-gray-400 hover:text-gray-200">&larr; all patches</a>
+<h1 class="text-2xl font-bold mt-2 mb-1">{{ patch.title }}</h1>
+<p class="text-sm text-gray-400 mb-4">
+  {{ patch.patch_date.strftime('%Y-%m-%d') if patch.patch_date else 'date unknown' }} ·
+  <a class="underline" href="{{ patch.source_url }}">source</a> ·
+  status: {{ patch.status }}
+  {% if not patch.llm_generated %}· heuristic summary (no LLM configured){% endif %}
+</p>
+
+{% if patch.summary %}
+<div class="border border-gray-800 rounded-lg p-4 mb-6 text-gray-200">{{ patch.summary }}</div>
+{% endif %}
+
+{% set colors = {
+  'buff': 'bg-green-900 text-green-300',
+  'nerf': 'bg-red-900 text-red-300',
+  'rework': 'bg-purple-900 text-purple-300',
+  'adjustment': 'bg-blue-900 text-blue-300',
+  'bugfix': 'bg-gray-800 text-gray-300'
+} %}
+
+<div class="space-y-3">
+  {% for ch in patch.changes %}
+  <div class="border border-gray-800 rounded-lg p-4">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xs px-2 py-0.5 rounded {{ colors.get(ch.change_type, 'bg-gray-800 text-gray-300') }}">
+        {{ ch.change_type }}
+      </span>
+      <span class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">{{ ch.entity_type }}</span>
+      <span class="font-semibold">{{ ch.entity_name }}</span>
+    </div>
+    <p class="text-gray-200">{{ ch.description }}</p>
+    {% if ch.numbers %}
+    <ul class="text-sm text-gray-400 mt-1">
+      {% for n in ch.numbers %}
+      <li>{{ n.stat }}: {{ n.old }} &rarr; {{ n.new }} {{ n.unit }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <p class="text-xs text-gray-500 mt-2 border-l-2 border-gray-700 pl-2">{{ ch.source_line }}</p>
+  </div>
+  {% else %}
+  <p class="text-gray-400">No structured changes extracted for this patch yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}
