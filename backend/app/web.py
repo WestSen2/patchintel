@@ -27,7 +27,7 @@ def index(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return templates.TemplateResponse(
-        "patches.html", {"request": request, "rows": rows}
+        request, "patches.html", {"rows": rows}
     )
 
 
@@ -37,5 +37,5 @@ def patch_detail(patch_id: int, request: Request, db: Session = Depends(get_db))
     if patch is None:
         raise HTTPException(status_code=404, detail="Patch not found")
     return templates.TemplateResponse(
-        "patch_detail.html", {"request": request, "patch": patch}
+        request, "patch_detail.html", {"patch": patch}
     )
