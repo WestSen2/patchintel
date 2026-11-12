@@ -84,7 +84,7 @@ def test_cli_full_m2_flow(db_session, monkeypatch):
 
     with mock.patch(
         "app.pipeline.orchestrator.steam_news.fetch_recent_news",
-        side_effect=[[news_item], []],  # one page, then history exhausted
+        side_effect=[[news_item], [], []],  # backfill: 1 page then empty; detect: empty
     ), mock.patch(
         "app.pipeline.orchestrator.steam_news.strip_bbcode", side_effect=lambda t: t
     ), mock.patch(

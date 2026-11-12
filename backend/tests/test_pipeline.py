@@ -100,18 +100,20 @@ def test_is_patch_candidate_requires_official_feed():
     )
 
 
-def test_backfill_pages_backwards_until_short_page(db_session):
-    """Backfill keeps paging while pages are full, stops on the first short one."""
+def test_backfill_pages_backwards_until_empty_page(db_session):
+    """Backfill keeps paging even on short pages (Steam caps page size
+    server-side); it stops only when a page comes back empty."""
     settings = get_settings()
     page_size = orchestrator.BACKFILL_PAGE_SIZE
-    page1 = [_item(f"p1-{i}", days_ago=i) for i in range(page_size)]  # full page
-    page2 = [_item("p2-0", days_ago=page_size + 1)]                    # short page
+    page1 = [_item(f"p1-{i}", days_ago=i) for i in range(20)]  # Steam caps at 20
+    page2 = [_item("p2-0", days_ago=30)]                       # short page, keep going
+    pages = [page1, page2, []]
 
     calls: list[dict] = []
 
     def fake_fetch(settings, count=20, enddate=None):
         calls.append({"count": count, "enddate": enddate})
-        return [page1, page2][len(calls) - 1]
+        return pages[len(calls) - 1]
 
     with mock.patch(
         "app.pipeline.orchestrator.steam_news.fetch_recent_news",
@@ -120,11 +122,11 @@ def test_backfill_pages_backwards_until_short_page(db_session):
         stats = orchestrator.PipelineStats()
         orchestrator.backfill_patches(db_session, settings, stats)
 
-    assert len(calls) == 2, "should stop after the first short page"
+    assert len(calls) == 3, "short page must not stop the backfill; empty page does"
     assert calls[0]["enddate"] is None   # first page: no enddate
     assert calls[1]["enddate"] is not None  # later pages: paged by enddate
-    assert stats.detected_new == page_size + 1
-    assert db_session.query(models.Patch).count() == page_size + 1
+    assert stats.detected_new == 21
+    assert db_session.query(models.Patch).count() == 21
 
 
 def test_backfill_is_idempotent(db_session):

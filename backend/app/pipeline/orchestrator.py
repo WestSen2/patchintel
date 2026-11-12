@@ -85,12 +85,16 @@ def backfill_patches(
     """Page backwards through Steam news history to ingest ALL past patches.
 
     Steam returns items newest-first; `enddate` asks for items strictly
-    before a timestamp. We stop when a page comes back short (history
-    exhausted) or empty, with a hard page cap as a safety net.
+    before a timestamp. Steam may return FEWER items than requested even
+    when more history exists (server-side count cap), so we do NOT stop on
+    a short page — we stop on an empty page or when enddate stops advancing,
+    with a hard page cap as a safety net.
     `max_new` caps how many new patches are ingested (trial runs).
     """
     enddate = None
     for _ in range(BACKFILL_MAX_PAGES):
+        if max_new is not None and stats.detected_new >= max_new:
+            break
         items = steam_news.fetch_recent_news(
             settings, count=BACKFILL_PAGE_SIZE, enddate=enddate
         )
@@ -98,13 +102,12 @@ def backfill_patches(
             break
         if max_new is not None:
             remaining = max_new - stats.detected_new
-            if remaining <= 0:
-                break
             items = items[:remaining]
         _insert_candidates(db, items, stats)
-        enddate = int(min(i.date for i in items).timestamp()) - 1
-        if len(items) < BACKFILL_PAGE_SIZE:
-            break
+        new_enddate = int(min(i.date for i in items).timestamp()) - 1
+        if enddate is not None and new_enddate >= enddate:
+            break  # no progress — avoid looping forever on a stuck API
+        enddate = new_enddate
 
 
 def enrich_patches(db: Session, stats: PipelineStats) -> None:

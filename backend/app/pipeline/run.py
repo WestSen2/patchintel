@@ -16,6 +16,7 @@ import argparse
 from .. import models
 from ..config import get_settings
 from ..db import SessionLocal, init_db
+from .entity_resolver import resolve_unknown_changes
 from .item_timing import snapshot_item_timing
 from .orchestrator import run_pipeline, seed_entities
 from .snapshots import compute_verdicts, snapshot_patch
@@ -56,6 +57,11 @@ def main() -> None:
         )
         for err in stats.errors:
             print(f"  [warn] {err}")
+
+        if args.verdicts or args.snapshots:
+            rescued = resolve_unknown_changes(db)
+            if rescued:
+                print(f"[resolve] rescued {rescued} changes with unknown entities")
 
         if args.snapshots or args.timing or args.verdicts:
             query = (
